@@ -193,6 +193,7 @@ function render(){
   case "doc":return docScreen(a);
   case "stats":return statsScreen(a);
   case "profile":return profileScreen(a);
+ case "track":return trackScreen(a);
  }
  home(a);
 }
@@ -205,15 +206,15 @@ function onboard(a){
    <p class="muted" style="margin-top:6px">Huit modules, des labs et des QCM, du conteneur au diagnostic de cluster.</p></div>
  <div class="spacer"></div><div class="spacer"></div>
  <div class="card stack">
-   <div><h3>Your name</h3><input id="nm" type="text" placeholder="Votre prénom" autocomplete="given-name"></div>
+   <div><h3>Votre prénom</h3><input id="nm" type="text" placeholder="Votre prénom" autocomplete="given-name"></div>
    <div><h3 style="margin-bottom:8px">Avatar</h3><div class="avs" id="avs">${AVATARS.map((x,i)=>`<button data-a="${x}" class="${i===0?"sel":""}">${x}</button>`).join("")}</div></div>
  </div>
- <div class="spacer"></div><button class="btn" id="ok">Start</button>`;
+ <div class="spacer"></div><button class="btn" id="ok">Commencer</button>`;
  a.querySelectorAll("#avs button").forEach(b=>b.onclick=()=>{
    a.querySelectorAll("#avs button").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
  $("#ok").onclick=()=>{
    const nm=($("#nm").value||"").trim().slice(0,18);
-   if(!nm){toast("Your name?");$("#nm").focus();return}
+   if(!nm){toast("Votre prénom?");$("#nm").focus();return}
    const av=(a.querySelector("#avs .sel")||{dataset:{a:"🐧"}}).dataset.a;
    S.profile={name:nm,avatar:av,since:Date.now()};touchDay();save();go("home")};
 }
@@ -233,27 +234,27 @@ function home(a){
  <div class="spacer"></div>
  <div class="card row" style="gap:16px">
    <div class="ring" style="--p:${pct}"><span>${xp}/${GOAL_XP}</span></div>
-   <div style="flex:1"><b>Today</b>
-     <p class="small muted" style="margin-top:2px">${xp>=GOAL_XP?"Goal reached 🎉":`${GOAL_XP-xp} XP to go`}</p>
-     <p class="tiny muted">${seen}/${total} lesson steps read · ${Math.round(S.minutes)} min total</p></div>
+   <div style="flex:1"><b>Aujourd'hui</b>
+     <p class="small muted" style="margin-top:2px">${xp>=GOAL_XP?"Objectif atteint 🎉":`${GOAL_XP-xp} XP restants`}</p>
+     <p class="tiny muted">${seen}/${total} étapes lues · ${Math.round(S.minutes)} min au total</p></div>
  </div>
  <div class="spacer"></div>
  <button class="btn" id="qcm">❓ QCM — 12 questions</button>
  <div style="height:10px"></div>
- <button class="btn blue" id="mock">⏱ Mock exam — 20 questions · 2 h</button>
+ <button class="btn blue" id="mock">⏱ Examen blanc — 20 questions · 2 h</button>
  <div style="height:10px"></div>
  <div class="grid2">
-   <button class="btn alt" id="dom">📚 Lessons</button>
+   <button class="btn alt" id="dom">📚 Leçons</button>
    <button class="btn alt" id="labs">🧪 Labs</button>
  </div>
  <div style="height:10px"></div>
  <div class="grid2">
-   <button class="btn alt" id="cheat">📄 Sheets</button>
-   <button class="btn alt" id="tips">💡 Tips</button>
-   <button class="btn alt" id="docs">📖 Docs</button>
+   <button class="btn alt" id="cheat">📄 Fiches</button>
+   <button class="btn alt" id="tips">💡 Conseils</button>
+   <button class="btn alt" id="docs">📖 Méthode</button>
  </div>
  <div style="height:10px"></div>
- <button class="btn alt" id="st">📊 Stats</button>
+ <button class="btn alt" id="st">📊 Suivi</button>
  <div class="spacer"></div>
  <div class="stack" id="dl"></div>`;
  $("#qcm").onclick=()=>startQuiz(null);
@@ -263,12 +264,12 @@ function home(a){
  $("#cheat").onclick=()=>{S._dom=DATA.cheatsheets[0].id;go("cheat")};
  $("#tips").onclick=()=>go("tips");
  $("#docs").onclick=()=>go("docs");
- $("#st").onclick=()=>go("stats");
+ $("#st").onclick=()=>go("track");
  const box=$("#dl");
  DATA.domains.forEach(d=>{
    const b=el(`<button class="lvl"><div class="ico" style="background:rgba(90,209,0,.15)">${d.e}</div>
      <div class="meta"><div class="between"><b>${esc(d.n)}</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
-     <div class="tiny muted">${d.pct} of the exam · ${d.lessons.length} lessons</div>
+     <div class="tiny muted">${d.pct} · ${d.lessons.length} lessons</div>
      <div class="bar"><i style="width:${domainPct(d.id)}%"></i></div></div><div class="muted">›</div></button>`);
    b.onclick=()=>{S._dom=d.id;go("domain")};
    box.appendChild(b);
@@ -276,7 +277,7 @@ function home(a){
 }
 
 function domainsScreen(a){
- a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Domains</h2><span style="width:40px"></span></div>
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Modules</h2><span style="width:40px"></span></div>
  <div class="stack" id="l"></div>`;
  DATA.domains.forEach(d=>{
    const b=el(`<button class="lvl"><div class="ico" style="background:rgba(90,209,0,.15)">${d.e}</div>
@@ -290,7 +291,7 @@ function domainsScreen(a){
 function domainScreen(a){
  const d=domainById(S._dom||DATA.domains[0].id);
  a.innerHTML=`<div class="top"><button class="back" onclick="go('domains')">‹</button><h2>${d.e} ${esc(d.n)}</h2><span style="width:40px"></span></div>
- <div class="card"><div class="between"><b>${d.pct} of the exam</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
+ <div class="card"><div class="between"><b>${d.pct} </b><span class="tiny muted">${domainPct(d.id)}%</span></div>
  <div class="bar" style="margin-top:8px"><i style="width:${domainPct(d.id)}%"></i></div></div>
  <div class="spacer"></div>
  <div class="grid2"><button class="btn alt" id="cs">📄 Cheat sheet</button><button class="btn" id="q">❓ QCM</button></div>
@@ -595,20 +596,84 @@ function certHTML(){
   <div class="tiny" style="color:#6b7686;margin-top:10px">${ok?"Parcours complet validé":"Parcours en cours — attestation partielle"}</div>
  </div>
  <div class="spacer"></div>
- <button class="btn" onclick="window.print()">Imprimer / PDF</button>
+ <div class="grid2"><button class="btn" onclick="certPDF()">⬇️ PDF</button><button class="btn alt" onclick="window.print()">🖨 Imprimer</button></div>
  <div class="spacer"></div>`;
 }
 function docScreen(a){
  const doc=DATA.docs[S._doc||0];
- a.innerHTML=`<div class="top"><button class="back" onclick="go('docs')">‹</button><h2>Docs</h2><span style="width:40px"></span></div>
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('docs')">‹</button><h2>Méthode</h2><span style="width:40px"></span></div>
  <h2 style="margin-bottom:6px">${esc(doc.t)}</h2>
  <div class="spacer"></div>
  ${doc.id==="doc_cert"?certHTML():""}
  <div class="stack">${doc.body.map(s=>`<div class="card"><h3 style="color:#b79bff">${esc(s.h)}</h3>
    <p style="margin-top:8px;font-size:15px;line-height:1.6">${esc(s.p)}</p></div>`).join("")}</div>`;
 }
+
+function lessonStatus(l){
+ const seen=l.steps.filter((_,i)=>S.seen[l.id+"_"+i]).length;
+ return {seen,total:l.steps.length,pct:Math.round(100*seen/l.steps.length)};
+}
+function trackScreen(a){
+ const rows=DATA.domains.map(d=>{
+   const ls=d.lessons.map(l=>{const st=lessonStatus(l);return `<div class="between" style="padding:6px 0;border-top:1px solid #1b2433">
+     <span class="small">${esc(l.t)}</span><span class="tiny ${st.pct===100?'':'muted'}">${st.pct===100?'✓ ':'· '}${st.seen}/${st.total}</span></div>`}).join("");
+   const tot=d.lessons.reduce((s,l)=>s+lessonStatus(l).seen,0);
+   const tt=d.lessons.reduce((s,l)=>s+l.steps.length,0);
+   return `<div class="card"><div class="between"><b>${d.e} ${esc(d.n)}</b><span class="tiny muted">${Math.round(100*tot/tt)}%</span></div>
+     <div class="bar" style="margin:8px 0 4px"><i style="width:${Math.round(100*tot/tt)}%"></i></div>${ls}</div>`;
+ }).join("");
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Fiche de suivi</h2><span style="width:40px"></span></div>
+ <div class="grid2"><button class="btn alt" onclick="window.print()">🖨 Imprimer</button><button class="btn alt" onclick="exportCSV()">⬇️ CSV</button></div>
+ <div class="spacer"></div>${rows}<div class="spacer"></div>
+ <p class="tiny muted">Le suivi est stocké dans ce navigateur. Exportez le CSV pour l'archiver ou le partager.</p>`;
+}
+function exportCSV(){
+ let out="module;lecon;etapes_lues;etapes_total;pourcentage\n";
+ DATA.domains.forEach(d=>d.lessons.forEach(l=>{const st=lessonStatus(l);
+   out+=`"${d.n}";"${l.t}";${st.seen};${st.total};${st.pct}\n`}));
+ const b=new Blob([out],{type:"text/csv;charset=utf-8"});
+ const u=URL.createObjectURL(b),a=document.createElement("a");
+ a.href=u;a.download="suivi-formation-k8s.csv";a.click();URL.revokeObjectURL(u);
+}
+function pdfEscape(t){
+ const map={"é":"\351","è":"\350","ê":"\352","à":"\340","â":"\342","ç":"\347","ô":"\364","î":"\356","ï":"\357","ù":"\371","û":"\373","É":"\311","È":"\310","À":"\300","Ç":"\307","«":"\253","»":"\273","’":"\222","—":"\227"};
+ return t.replace(/[éèêàâçôîïùûÉÈÀÇ«»’—]/g,c=>map[c]||c).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")}
+function certPDF(){
+ const total=DATA.domains.reduce((s,d)=>s+d.lessons.reduce((t,l)=>t+l.steps.length,0),0);
+ const seen=Object.keys(S.seen).length, pct=Math.round(100*seen/total);
+ const acc=Math.round(100*S.good/((S.good+S.bad)||1));
+ const name=((S.profile&&S.profile.name)||"").replace(/[^\w\s\-'.]/g,"").slice(0,40);
+ const date=new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+ const lines=[
+  ["FORMATION KUBERNETES",28],["du conteneur au cluster - 8 modules",12],["",10],
+  ["Attestation de formation",16],["",12],["Décernée à",12],[name||"-",24],["",12],
+  [`Progression : ${pct}%   Précision QCM : ${acc}%`,13],
+  [`Temps cumule : ${Math.floor(S.minutes/60)}h${String(Math.round(S.minutes%60)).padStart(2,"0")}`,13],
+  ["",14],[date,12],["",10],["Attestation locale de formation, non équivalente au CKA.",9]
+ ];
+ let y=760, content="";
+ lines.forEach(([t,sz])=>{ if(!t) {y-=sz;return}
+   content+=`BT /F1 ${sz} Tf 60 ${y} Td (${pdfEscape(t)}) Tj ET\n`; y-=sz*1.6+8; });
+ const objs=[];
+ objs[1]="<< /Type /Catalog /Pages 2 0 R >>";
+ objs[2]="<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+ objs[3]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>";
+ objs[4]=`<< /Length ${content.length} >>\nstream\n${content}endstream`;
+ objs[5]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+ let pdf="%PDF-1.4\n",offs=[];
+ for(let i=1;i<objs.length;i++){offs[i]=pdf.length;pdf+=`${i} 0 obj\n${objs[i]}\nendobj\n`}
+ const xref=pdf.length;
+ pdf+=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+ for(let i=1;i<objs.length;i++) pdf+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
+ pdf+=`trailer\n<< /Size ${objs.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+ const bytes=new Uint8Array(pdf.length);
+ for(let i=0;i<pdf.length;i++) bytes[i]=pdf.charCodeAt(i)&255;
+ const b=new Blob([bytes],{type:"application/pdf"});
+ const u=URL.createObjectURL(b),a2=document.createElement("a");
+ a2.href=u;a2.download="attestation-formation-k8s.pdf";a2.click();URL.revokeObjectURL(u);
+}
 function tipsScreen(a){
- a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Exam tips</h2><span style="width:40px"></span></div>
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Conseils</h2><span style="width:40px"></span></div>
  <div class="stack">${DATA.tips.map(t=>`<div class="card"><b>${esc(t.t)}</b><p class="small muted" style="margin-top:6px">${esc(t.p)}</p></div>`).join("")}</div>`;
 }
 
@@ -616,16 +681,16 @@ function statsScreen(a){
  const acc=Math.round(100*S.good/((S.good+S.bad)||1));
  const steps=Object.keys(S.seen).length;
  const total=DATA.domains.reduce((s,d)=>s+d.lessons.reduce((t,l)=>t+l.steps.length,0),0);
- a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Stats</h2><span style="width:40px"></span></div>
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Suivi</h2><span style="width:40px"></span></div>
  <div class="grid2">
-  <div class="stat"><b>${Math.floor(S.minutes/60)}h${String(Math.round(S.minutes%60)).padStart(2,"0")}</b><i>time</i></div>
-  <div class="stat"><b>${S.streak}</b><i>streak</i></div>
+  <div class="stat"><b>${Math.floor(S.minutes/60)}h${String(Math.round(S.minutes%60)).padStart(2,"0")}</b><i>temps</i></div>
+  <div class="stat"><b>${S.streak}</b><i>série</i></div>
   <div class="stat"><b>${S.best||0}</b><i>record</i></div>
-  <div class="stat"><b>${acc}%</b><i>accuracy</i></div>
-  <div class="stat"><b>${steps}/${total}</b><i>steps read</i></div>
+  <div class="stat"><b>${acc}%</b><i>précision</i></div>
+  <div class="stat"><b>${steps}/${total}</b><i>étapes lues</i></div>
   <div class="stat"><b>${Object.keys(DATA.questions).reduce((s,k)=>s+DATA.questions[k].length,0)}</b><i>questions</i></div>
  </div>
- <div class="spacer"></div><h3>By domain</h3><div class="spacer"></div>
+ <div class="spacer"></div><h3>Par module</h3><div class="spacer"></div>
  <div class="stack">${DATA.domains.map(d=>`<div class="card"><div class="between"><b>${d.e} ${esc(d.n)}</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
  <div class="bar" style="margin-top:8px"><i style="width:${domainPct(d.id)}%"></i></div></div>`).join("")}</div>`;
 }
@@ -638,7 +703,7 @@ function profileScreen(a){
  <p class="small muted">Since ${new Date(p.since).toLocaleDateString("en-GB")}</p>
  <div class="spacer"></div><button class="btn alt" id="ren">✏️ Change name</button>
  <div class="spacer"></div>
- <div class="grid3"><div class="stat"><b>${S.xp}</b><i>xp</i></div><div class="stat"><b>${S.streak}</b><i>streak</i></div>
+ <div class="grid3"><div class="stat"><b>${S.xp}</b><i>xp</i></div><div class="stat"><b>${S.streak}</b><i>série</i></div>
  <div class="stat"><b>${Object.keys(S.seen).length}</b><i>steps</i></div></div></div>
  <div class="spacer"></div>
  <div class="card"><h3>Sync</h3>
@@ -652,7 +717,7 @@ function profileScreen(a){
    <button class="btn alt" id="exp">⬇️ Export</button><div style="height:10px"></div>
    <button class="btn alt" id="rst" style="color:#ff9a9a">♻️ Reset</button></div>
  <p class="tiny muted" style="text-align:center;margin-top:16px">${VERSION} · data stays on your phone</p>`;
- $("#ren").onclick=()=>{const v=prompt("Your name",p.name);if(v&&v.trim()){p.name=v.trim().slice(0,18);save();render()}};
+ $("#ren").onclick=()=>{const v=prompt("Votre prénom",p.name);if(v&&v.trim()){p.name=v.trim().slice(0,18);save();render()}};
  $("#sy").onclick=()=>{const v=$("#tk").value.trim();if(v&&v.indexOf("•")!==0)localStorage.setItem(TOKKEY,v);syncNow()};
  $("#exp").onclick=()=>{const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
    const u=URL.createObjectURL(b),i=document.createElement("a");i.href=u;i.download="cka-progress.json";i.click();URL.revokeObjectURL(u)};
