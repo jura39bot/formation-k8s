@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Formation Kubernetes — du conteneur au cluster</title>
+<meta name="theme-color" content="#05070d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="K8s">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+--bg:#05070d;--txt:#f6f9ff;--dim:rgba(235,242,255,.62);
+--acc:#5ad100;--acc2:#0aa7f5;--bad:#ff4b4b;--warn:#ff9600;
+--glass:rgba(255,255,255,.09);--stroke:rgba(255,255,255,.16);--stroke2:rgba(255,255,255,.09);
+--r:26px;--rs:18px;--shadow:0 18px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.30);
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+html,body{margin:0;height:100%;background:var(--bg)}
+body{color:var(--txt);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+letter-spacing:-.011em;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-25%;z-index:-2;pointer-events:none;
+background:
+ radial-gradient(42% 34% at 16% 6%, rgba(50,120,255,.42), transparent 68%),
+ radial-gradient(40% 30% at 84% 10%, rgba(10,167,245,.36), transparent 68%),
+ radial-gradient(48% 38% at 50% 98%, rgba(120,60,255,.30), transparent 70%),
+ radial-gradient(34% 26% at 92% 62%, rgba(0,200,180,.20), transparent 70%);
+filter:blur(46px) saturate(140%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+background:radial-gradient(130% 90% at 50% 0%,transparent 38%,rgba(0,0,0,.62) 100%)}
+#app{max-width:560px;margin:0 auto;padding:18px 16px 104px;min-height:100vh}
+h1,h2,h3{margin:0;line-height:1.15;letter-spacing:-.028em}
+h1{font-size:27px;font-weight:800}
+h2{font-size:20px;font-weight:750}
+h3{font-size:11.5px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.10em}
+p{margin:0}
+.muted{color:var(--dim)}.small{font-size:13px}.tiny{font-size:11px}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stack>*+*{margin-top:12px}
+.spacer{height:12px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.card{background:linear-gradient(158deg,rgba(255,255,255,.14),rgba(255,255,255,.045) 55%,rgba(255,255,255,.075));
+border:1px solid var(--stroke);border-radius:var(--r);padding:17px;
+-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+box-shadow:var(--shadow)}
+.btn{display:block;width:100%;padding:17px;border-radius:20px;
+background:linear-gradient(180deg,#86ec3a 0%,#55c400 55%,#46ab00 100%);color:#05260a;
+font-weight:800;font-size:16.5px;text-align:center;
+box-shadow:0 12px 26px rgba(85,196,0,.38), inset 0 1px 0 rgba(255,255,255,.60), inset 0 -2px 0 rgba(0,0,0,.14);
+transition:transform .12s ease}
+.btn:active{transform:scale(.975)}
+.btn.alt{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));color:var(--txt);
+font-weight:700;border:1px solid var(--stroke);box-shadow:0 10px 26px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.blue{background:linear-gradient(180deg,#5ecbff,#0aa7f5 60%,#0789c9);color:#03212f;
+box-shadow:0 12px 26px rgba(10,167,245,.35), inset 0 1px 0 rgba(255,255,255,.55)}
+.btn:disabled{opacity:.42;box-shadow:none;transform:none}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;font-size:13px;font-weight:700;
+background:linear-gradient(160deg,rgba(255,255,255,.17),rgba(255,255,255,.06));border:1px solid var(--stroke);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 6px 16px rgba(0,0,0,.22)}
+.bar{height:9px;border-radius:99px;background:rgba(0,0,0,.42);overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#7ef03a,#4fc000);
+box-shadow:0 0 12px rgba(110,230,40,.55);transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.ring{--p:0;width:80px;height:80px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;position:relative;
+background:conic-gradient(from -90deg,#8bf23c calc(var(--p)*1%),rgba(255,255,255,.10) 0);
+box-shadow:0 0 22px rgba(110,230,40,.30), inset 0 1px 0 rgba(255,255,255,.4)}
+.ring::after{content:"";position:absolute;inset:8px;border-radius:50%;
+background:linear-gradient(160deg,rgba(20,28,44,.96),rgba(8,12,22,.98))}
+.ring span{position:relative;z-index:1;font-weight:800;font-size:16px}
+.stat{background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+border:1px solid var(--stroke2);border-radius:20px;padding:13px;text-align:center}
+.stat b{display:block;font-size:21px;line-height:1.15}
+.stat i{font-style:normal;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lvl{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:15px;border-radius:22px;
+background:linear-gradient(158deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid var(--stroke2);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.24), 0 12px 28px rgba(0,0,0,.30);transition:transform .12s ease}
+.lvl:active{transform:scale(.982)}
+.lvl .ico{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:22px;flex:0 0 auto;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.lvl .meta{flex:1;min-width:0}.lvl .meta b{font-size:16px}.lvl .meta .bar{margin-top:8px}
+.cardq{background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+border:1px solid var(--stroke);border-radius:22px;padding:16px;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.26), 0 14px 32px rgba(0,0,0,.32)}
+.choice{display:block;width:100%;text-align:left;padding:16px;border-radius:18px;margin-top:10px;
+font-weight:650;font-size:15.5px;background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+border:1.5px solid var(--stroke2);box-shadow:inset 0 1px 0 rgba(255,255,255,.20), 0 8px 20px rgba(0,0,0,.22);
+transition:transform .10s ease}
+.choice:active{transform:scale(.985)}
+.choice.ok{border-color:rgba(120,230,60,.85);background:linear-gradient(160deg,rgba(90,209,0,.28),rgba(90,209,0,.10))}
+.choice.no{border-color:rgba(255,90,90,.8);background:linear-gradient(160deg,rgba(255,70,70,.26),rgba(255,70,70,.08))}
+.choice .k{display:inline-block;min-width:22px;color:var(--dim);font-weight:800}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.back{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font-size:18px;
+background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1px solid var(--stroke);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 8px 18px rgba(0,0,0,.28)}
+.ex{color:var(--dim);font-size:14px;margin-top:10px;border-left:3px solid rgba(255,255,255,.18);padding-left:11px}
+.feed{position:fixed;left:0;right:0;bottom:0;z-index:9;padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+background:linear-gradient(180deg,rgba(5,7,13,0),rgba(5,7,13,.72) 45%,rgba(5,7,13,.94) 100%)}
+.feed>div{max-width:560px;margin:0 auto}
+.toast{position:fixed;left:50%;bottom:118px;transform:translateX(-50%) translateY(16px) scale(.96);opacity:0;
+padding:13px 20px;border-radius:18px;font-weight:700;font-size:14px;z-index:20;pointer-events:none;
+background:linear-gradient(160deg,rgba(70,180,40,.55),rgba(30,90,20,.55));border:1px solid rgba(160,255,120,.45);
+color:#eaffdc;text-align:center;max-width:88vw;transition:.22s}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+.avs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.avs button{font-size:25px;padding:9px 0;border-radius:15px;background:rgba(255,255,255,.08);
+border:1.5px solid var(--stroke2)}
+.avs button.sel{border-color:rgba(120,230,60,.9);background:rgba(90,209,0,.25)}
+.tabs{display:flex;gap:8px;margin-bottom:14px;padding:5px;border-radius:18px;background:rgba(255,255,255,.06);
+border:1px solid var(--stroke2)}
+.tab{flex:1;padding:10px;border-radius:14px;font-weight:700;font-size:14px;text-align:center;color:var(--dim)}
+.tab.on{background:rgba(255,255,255,.20);color:#fff}
+input[type=text],input[type=password]{width:100%;padding:16px;border-radius:18px;color:var(--txt);font-size:17px;outline:none;
+background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(0,0,0,.18));border:1.5px solid var(--stroke2)}
+input:focus{border-color:rgba(10,167,245,.85)}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;
+background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px;margin:8px 0 0;
+color:#9fe870;overflow-x:auto}
+.fb{margin-top:13px;padding:14px 15px;border-radius:16px;font-weight:600;font-size:14px;line-height:1.5}
+.fb.ok{background:rgba(90,209,0,.15);border:1px solid rgba(120,230,60,.42);color:#d6ffc0}
+.fb.no{background:rgba(255,70,70,.13);border:1px solid rgba(255,90,90,.42);color:#ffd0d0}
+.fb b{color:#fff}
+.tip{border-left:3px solid rgba(10,167,245,.7);padding-left:12px;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+const DATA = __DATA__;
+const VERSION = "__BUILD__";
+const KEY="cka_v1", TOKKEY="cka_tok";
+const GOAL_XP=60, QPER=12;
+const AVATARS=["🐧","🦊","🐼","🦉","🐙","🦁","🐸","🐨","🦄","🐺","🦖","🐳"];
+
+const $=s=>document.querySelector(s);
+function el(h){const d=document.createElement("div");d.innerHTML=h.trim();return d.firstElementChild}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),1800)}
+const today=()=>new Date().toISOString().slice(0,10);
+
+function blank(){return{profile:null,xp:0,streak:0,best:0,last:null,minutes:0,good:0,bad:0,seen:{},history:{},created:Date.now(),gistId:null}}
+let S=(()=>{try{const r=JSON.parse(localStorage.getItem(KEY));return r&&r.seen?r:blank()}catch(e){return blank()}})();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function touchDay(){const t=today();if(S.last===t)return;const y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+ S.streak=S.last===y?S.streak+1:1;S.best=Math.max(S.best||0,S.streak);S.last=t;save()}
+
+function domainById(id){return DATA.domains.find(d=>d.id===id)}
+function lessonById(id){for(const d of DATA.domains){const l=d.lessons.find(x=>x.id===id);if(l)return{l,d}}return null}
+function domainPct(id){const d=domainById(id);if(!d)return 0;let s=0,n=0;
+ d.lessons.forEach(l=>{n+=l.steps.length;l.steps.forEach((_,i)=>{if(S.seen[l.id+"_"+i])s++})});
+ return n?Math.round(100*s/n):0}
+
+/* audio */
+let ACTX=null, ABUF={};
+function actx(){try{if(!ACTX){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;ACTX=new C()}
+ if(ACTX.state==="suspended")ACTX.resume();return ACTX}catch(e){return null}}
+function unlockAudio(){const c=actx();try{if(c){const o=c.createOscillator(),g=c.createGain();g.gain.value=.0001;
+ o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.05)}}catch(e){}}
+window.addEventListener("pointerdown",unlockAudio,{once:true});
+function playClip(src,rate,onend){
+ const c=actx(); if(!c)return Promise.resolve(false);
+ return (async()=>{try{let b=ABUF[src];
+   if(!b){const r=await fetch(src);const ab=await r.arrayBuffer();b=await c.decodeAudioData(ab);ABUF[src]=b}
+   const s=c.createBufferSource();s.buffer=b;s.playbackRate.value=rate||1;
+   const g=c.createGain();g.gain.value=1;s.connect(g);g.connect(c.destination);
+   s.onended=()=>{if(onend)onend()};s.start();return true}catch(e){return false}})();
+}
+
+/* ---------- render ---------- */
+function render(){
+ const a=$("#app");
+ if(!S.profile)return onboard(a);
+ switch(S._s||"home"){
+  case "domains":return domainsScreen(a);
+  case "domain":return domainScreen(a);
+  case "lesson":return lessonScreen(a);
+  case "cours":return coursScreen(a);
+  case "quiz":return quizScreen(a);
+  case "labs":return labsScreen(a);
+  case "lab":return labScreen(a);
+  case "mock":return mockScreen(a);
+  case "mockresult":return mockResult(a);
+  case "cheat":return cheatScreen(a);
+  case "tips":return tipsScreen(a);
+  case "docs":return docsScreen(a);
+  case "doc":return docScreen(a);
+  case "stats":return statsScreen(a);
+  case "profile":return profileScreen(a);
+ }
+ home(a);
+}
+function go(s){S._s=s;render();window.scrollTo(0,0)}
+
+function onboard(a){
+ a.innerHTML=`<div style="margin-top:12vh;text-align:center">
+   <div style="font-size:62px">☸️</div>
+   <h1 style="margin-top:10px">Formation Kubernetes</h1>
+   <p class="muted" style="margin-top:6px">Huit modules, des labs et des QCM, du conteneur au diagnostic de cluster.</p></div>
+ <div class="spacer"></div><div class="spacer"></div>
+ <div class="card stack">
+   <div><h3>Your name</h3><input id="nm" type="text" placeholder="Votre prénom" autocomplete="given-name"></div>
+   <div><h3 style="margin-bottom:8px">Avatar</h3><div class="avs" id="avs">${AVATARS.map((x,i)=>`<button data-a="${x}" class="${i===0?"sel":""}">${x}</button>`).join("")}</div></div>
+ </div>
+ <div class="spacer"></div><button class="btn" id="ok">Start</button>`;
+ a.querySelectorAll("#avs button").forEach(b=>b.onclick=()=>{
+   a.querySelectorAll("#avs button").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
+ $("#ok").onclick=()=>{
+   const nm=($("#nm").value||"").trim().slice(0,18);
+   if(!nm){toast("Your name?");$("#nm").focus();return}
+   const av=(a.querySelector("#avs .sel")||{dataset:{a:"🐧"}}).dataset.a;
+   S.profile={name:nm,avatar:av,since:Date.now()};touchDay();save();go("home")};
+}
+
+function home(a){
+ touchDay();
+ const h=S.history[today()]||{xp:0,m:0};
+ const xp=Math.round(h.xp||0), pct=Math.min(100,Math.round(100*xp/GOAL_XP));
+ const seen=Object.keys(S.seen).length;
+ const total=DATA.domains.reduce((s,d)=>s+d.lessons.reduce((t,l)=>t+l.steps.length,0),0);
+ a.innerHTML=`
+ <div class="between">
+   <div class="row"><div style="font-size:30px">${S.profile.avatar}</div>
+     <div><b>${esc(S.profile.name)}</b><div class="tiny muted">Formation K8s · 8 modules</div></div></div>
+   <div class="row" style="gap:6px"><span class="pill">🔥 ${S.streak}</span><span class="pill">⭐ ${S.xp}</span></div>
+ </div>
+ <div class="spacer"></div>
+ <div class="card row" style="gap:16px">
+   <div class="ring" style="--p:${pct}"><span>${xp}/${GOAL_XP}</span></div>
+   <div style="flex:1"><b>Today</b>
+     <p class="small muted" style="margin-top:2px">${xp>=GOAL_XP?"Goal reached 🎉":`${GOAL_XP-xp} XP to go`}</p>
+     <p class="tiny muted">${seen}/${total} lesson steps read · ${Math.round(S.minutes)} min total</p></div>
+ </div>
+ <div class="spacer"></div>
+ <button class="btn" id="qcm">❓ QCM — 12 questions</button>
+ <div style="height:10px"></div>
+ <button class="btn blue" id="mock">⏱ Mock exam — 20 questions · 2 h</button>
+ <div style="height:10px"></div>
+ <div class="grid2">
+   <button class="btn alt" id="dom">📚 Lessons</button>
+   <button class="btn alt" id="labs">🧪 Labs</button>
+ </div>
+ <div style="height:10px"></div>
+ <div class="grid2">
+   <button class="btn alt" id="cheat">📄 Sheets</button>
+   <button class="btn alt" id="tips">💡 Tips</button>
+   <button class="btn alt" id="docs">📖 Docs</button>
+ </div>
+ <div style="height:10px"></div>
+ <button class="btn alt" id="st">📊 Stats</button>
+ <div class="spacer"></div>
+ <div class="stack" id="dl"></div>`;
+ $("#qcm").onclick=()=>startQuiz(null);
+ $("#mock").onclick=()=>startMock();
+ $("#dom").onclick=()=>go("domains");
+ $("#labs").onclick=()=>go("labs");
+ $("#cheat").onclick=()=>{S._dom=DATA.cheatsheets[0].id;go("cheat")};
+ $("#tips").onclick=()=>go("tips");
+ $("#docs").onclick=()=>go("docs");
+ $("#st").onclick=()=>go("stats");
+ const box=$("#dl");
+ DATA.domains.forEach(d=>{
+   const b=el(`<button class="lvl"><div class="ico" style="background:rgba(90,209,0,.15)">${d.e}</div>
+     <div class="meta"><div class="between"><b>${esc(d.n)}</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
+     <div class="tiny muted">${d.pct} of the exam · ${d.lessons.length} lessons</div>
+     <div class="bar"><i style="width:${domainPct(d.id)}%"></i></div></div><div class="muted">›</div></button>`);
+   b.onclick=()=>{S._dom=d.id;go("domain")};
+   box.appendChild(b);
+ });
+}
+
+function domainsScreen(a){
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Domains</h2><span style="width:40px"></span></div>
+ <div class="stack" id="l"></div>`;
+ DATA.domains.forEach(d=>{
+   const b=el(`<button class="lvl"><div class="ico" style="background:rgba(90,209,0,.15)">${d.e}</div>
+     <div class="meta"><div class="between"><b>${esc(d.n)}</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
+     <div class="tiny muted">${d.pct} · ${d.lessons.length} lessons</div><div class="bar"><i style="width:${domainPct(d.id)}%"></i></div></div><div class="muted">›</div></button>`);
+   b.onclick=()=>{S._dom=d.id;go("domain")};
+   $("#l").appendChild(b);
+ });
+}
+
+function domainScreen(a){
+ const d=domainById(S._dom||DATA.domains[0].id);
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('domains')">‹</button><h2>${d.e} ${esc(d.n)}</h2><span style="width:40px"></span></div>
+ <div class="card"><div class="between"><b>${d.pct} of the exam</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
+ <div class="bar" style="margin-top:8px"><i style="width:${domainPct(d.id)}%"></i></div></div>
+ <div class="spacer"></div>
+ <div class="grid2"><button class="btn alt" id="cs">📄 Cheat sheet</button><button class="btn" id="q">❓ QCM</button></div>
+ <div class="spacer"></div><div class="stack" id="ls"></div>`;
+ $("#cs").onclick=()=>{S._dom=d.id;go("cheat")};
+ $("#q").onclick=()=>startQuiz(d.id);
+ d.lessons.forEach(l=>{
+   const st=l.steps.filter((_,i)=>S.seen[l.id+"_"+i]).length;
+   const b=el(`<button class="lvl"><div class="ico" style="background:rgba(10,167,245,.15)">${st===l.steps.length?"✓":"•"}</div>
+     <div class="meta"><div class="between"><b>${esc(l.t)}</b><span class="tiny muted">${st}/${l.steps.length}</span></div>
+     <div class="bar" style="margin-top:7px"><i style="width:${Math.round(100*st/l.steps.length)}%"></i></div></div><div class="muted">›</div></button>`);
+   b.onclick=()=>{S._lesson=l.id;S._csi=0;go("lesson")};
+   $("#ls").appendChild(b);
+ });
+}
+
+function lessonScreen(a){
+ const r=lessonById(S._lesson); if(!r)return go("domain");
+ const l=r.l;
+ l.steps.forEach((_,i)=>{S.seen[l.id+"_"+i]=true}); save();
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('domain')">‹</button><h2>${esc(l.t)}</h2><span style="width:40px"></span></div>
+ <button class="btn" id="cours">🎬 Live session — narrated walkthrough</button>
+ <div class="spacer"></div>
+ <div class="stack">${l.steps.map(st=>`<div class="card"><h3 style="color:#8fd4ff">${esc(st.h)}</h3>
+   <p style="margin-top:8px">${esc(st.p)}</p></div>`).join("")}</div>
+ <div class="spacer"></div>
+ <button class="btn alt" id="qcm">❓ QCM on this domain</button>`;
+ $("#cours").onclick=()=>{S._csi=0;go("cours")};
+ $("#qcm").onclick=()=>startQuiz(r.d.id);
+}
+
+/* ---------- animated course ---------- */
+function coursScreen(a){
+ const r=lessonById(S._lesson); if(!r)return go("domain");
+ const l=r.l; const i=Math.min(S._csi||0,l.steps.length-1); const st=l.steps[i];
+ const pct=Math.round(100*(i+1)/l.steps.length);
+ a.innerHTML=`<div class="top"><button class="back" onclick="coursStop();go('lesson')">‹</button><h2>${esc(l.t)}</h2><span style="width:40px"></span></div>
+ <div class="between" style="margin-bottom:8px"><span class="pill">Step ${i+1} / ${l.steps.length}</span>
+ <span class="tiny muted">${esc(r.d.n)}</span></div>
+ <div class="bar" style="margin-bottom:14px"><i style="width:${pct}%"></i></div>
+ <div class="cardq"><h3 style="color:#8fd4ff">${esc(st.h)}</h3>
+ <p style="margin-top:10px;font-size:16.5px;line-height:1.6">${esc(st.p)}</p></div>
+ <div class="spacer"></div>
+ <button class="btn alt" id="say">🔊 Replay</button>
+ <div style="height:10px"></div>
+ <div class="grid3"><button class="btn alt" id="prev">◀︎</button>
+ <button class="btn" id="play">${S._csp?"⏸ Pause":"▶︎ Play"}</button>
+ <button class="btn alt" id="next">▶︎</button></div>
+ <div style="height:10px"></div><button class="btn alt" id="restart">🔄 Restart</button>`;
+ const clip=`audio/${l.id}_${i}.mp3`;
+ const say=()=>playClip(clip,1,()=>{if(S._csp)setTimeout(coursNext,900)});
+ $("#say").onclick=()=>{unlockAudio();say()};
+ $("#prev").onclick=()=>{coursStop();if(i>0)S._csi=i-1;render()};
+ $("#next").onclick=()=>{coursStop();if(i<l.steps.length-1)S._csi=i+1;render()};
+ $("#restart").onclick=()=>{coursStop();S._csi=0;render()};
+ $("#play").onclick=()=>{if(S._csp){coursStop();render();return}S._csp=true;render();setTimeout(say,120)};
+}
+function coursNext(){
+ const r=lessonById(S._lesson); if(!r)return; const l=r.l;
+ if((S._csi||0)>=l.steps.length-1){S._csp=false;render();return}
+ S._csi=(S._csi||0)+1;render();
+ setTimeout(()=>playClip(`audio/${l.id}_${S._csi}.mp3`,1,()=>{if(S._csp)setTimeout(coursNext,900)}),150);
+}
+function coursStop(){S._csp=false;try{speechSynthesis.cancel()}catch(e){}}
+
+/* ---------- quiz ---------- */
+let Q=null;
+function startQuiz(domId){
+ const pool=[];
+ DATA.domains.forEach(d=>{
+   if(domId&&d.id!==domId)return;
+   (DATA.questions[d.id]||[]).forEach(q=>pool.push({...q,dom:d.id}));
+ });
+ if(!pool.length)return toast("No questions");
+ for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+ Q={list:pool.slice(0,QPER),i:0,ok:0,ko:0,answered:false,pick:-1};
+ go("quiz");
+}
+function quizScreen(a){
+ if(!Q)return go("home");
+ const q=Q.list[Q.i]; const pct=Math.round(100*Q.i/Q.list.length);
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>QCM</h2><span style="width:40px"></span></div>
+ <div class="between" style="margin-bottom:8px"><span class="pill">Question ${Q.i+1} / ${Q.list.length}</span>
+ <span class="tiny muted">${Q.ok} ✓ · ${Q.ko} ✗</span></div>
+ <div class="bar" style="margin-bottom:14px"><i style="width:${pct}%"></i></div>
+ <div class="cardq"><div class="tiny muted">${esc(domainById(q.dom).n)}</div>
+ <div style="font-size:18px;font-weight:750;margin-top:8px;line-height:1.4">${esc(q.q)}</div></div>
+ <div id="o">${q.o.map((x,i)=>{let cls="choice";
+   if(Q.answered){ if(i===q.a)cls+=" ok"; else if(i===Q.pick)cls+=" no"; }
+   return `<button class="${cls}" data-i="${i}"><span class="k">${"ABCD"[i]}</span>${esc(x)}</button>`}).join("")}</div>
+ ${Q.answered?`<div class="fb ${Q.pick===q.a?"ok":"no"}">
+   ${Q.pick===q.a?"✓ Correct":"✗ Wrong — the answer is <b>"+esc(q.o[q.a])+"</b>"}
+   <div class="tiny" style="margin-top:6px;opacity:.9">${esc(q.w)}</div></div>`:""}
+ <div class="feed"><div><button class="btn" id="nx">${Q.answered?(Q.i+1>=Q.list.length?"See results":"Next question"):"Choose an answer"}</button></div></div>`;
+ if(!Q.answered){
+   a.querySelectorAll("#o .choice").forEach(b=>b.onclick=()=>{
+     Q.pick=+b.dataset.i;Q.answered=true;
+     const ok=Q.pick===q.a;
+     if(ok){Q.ok++;S.good++;S.xp+=10}else{Q.ko++;S.bad++;S.xp+=2}
+     S.history[today()]=S.history[today()]||{xp:0,m:0};
+     S.history[today()].xp=(S.history[today()].xp||0)+(ok?10:2);save();render();
+   });
+ } else {
+   $("#nx").onclick=()=>{
+     Q.i++;Q.answered=false;Q.pick=-1;
+     if(Q.i>=Q.list.length){const ok=Q.ok,n=Q.list.length;Q=null;return endQuiz(ok,n)}
+     render();
+   };
+ }
+}
+function endQuiz(ok,n){
+ const acc=Math.round(100*ok/(n||1));
+ const a=$("#app");
+ a.innerHTML=`<div style="text-align:center;margin-top:6vh"><div style="font-size:60px">${acc>=80?"🎉":acc>=50?"💪":"🌱"}</div>
+ <h1 style="margin-top:8px">${acc>=80?"Excellent":acc>=50?"Good":"Keep going"}</h1>
+ <p class="muted" style="margin-top:6px">${ok} / ${n} correct</p></div>
+ <div class="spacer"></div>
+ <div class="grid3"><div class="stat"><b>${ok}</b><i>correct</i></div>
+ <div class="stat"><b>${n-ok}</b><i>errors</i></div><div class="stat"><b>${acc}%</b><i>score</i></div></div>
+ <div class="spacer"></div><button class="btn" onclick="go('home')">Done</button>
+ <div style="height:10px"></div><button class="btn alt" onclick="startQuiz(null)">Another series</button>`;
+}
+
+/* ---------- labs ---------- */
+function labsScreen(a){
+ const done=S.labs||{};
+ const total=DATA.labs.length, ok=Object.keys(done).filter(k=>done[k]).length;
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Labs</h2><span class="pill">${ok}/${total}</span></div>
+ <p class="small muted" style="margin-bottom:12px">Run these on a real cluster. The app gives the task and the check, you do the work.</p>
+ <div class="bar" style="margin-bottom:14px"><i style="width:${Math.round(100*ok/total)}%"></i></div>
+ <div class="stack" id="ll"></div>`;
+ const box=$("#ll");
+ DATA.domains.forEach(d=>{
+   const labs=DATA.labs.filter(l=>l.dom===d.id);
+   if(!labs.length)return;
+   box.appendChild(el(`<h3 style="margin-top:10px">${d.e} ${esc(d.n)}</h3>`));
+   labs.forEach(l=>{
+     const b=el(`<button class="lvl"><div class="ico" style="background:rgba(90,209,0,.15)">${done[l.id]?"✓":"•"}</div>
+       <div class="meta"><b>${esc(l.t)}</b><div class="tiny muted">${done[l.id]?"done":"to do"}</div></div>
+       <div class="muted">›</div></button>`);
+     b.onclick=()=>{S._lab=l.id;go("lab")};
+     box.appendChild(b);
+   });
+ });
+}
+function labScreen(a){
+ const l=DATA.labs.find(x=>x.id===S._lab); if(!l)return go("labs");
+ const done=(S.labs||{})[l.id];
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('labs')">‹</button><h2>Lab</h2><span style="width:40px"></span></div>
+ <div class="tiny muted">${esc(domainById(l.dom).n)}</div>
+ <h2 style="margin-top:6px">${esc(l.t)}</h2>
+ <div class="spacer"></div>
+ <div class="card"><h3>Task</h3><p style="margin-top:8px">${esc(l.brief)}</p></div>
+ <div class="spacer"></div>
+ <button class="btn alt" id="sol">👁 Show solution</button>
+ <div id="solbox"></div>
+ <div class="spacer"></div>
+ <div class="card"><h3>How to verify</h3><p class="small" style="margin-top:8px">${esc(l.check)}</p></div>
+ <div class="spacer"></div>
+ <button class="btn ${done?"alt":""}" id="done">${done?"✓ Done — unmark":"Mark as done"}</button>`;
+ $("#sol").onclick=()=>{
+   const box=$("#solbox");
+   if(box.innerHTML){box.innerHTML="";return}
+   box.innerHTML=`<pre>${esc(l.sol)}</pre>`;
+ };
+ $("#done").onclick=()=>{
+   S.labs=S.labs||{};
+   S.labs[l.id]=!S.labs[l.id];
+   if(S.labs[l.id]){S.xp+=15;S.history[today()]=S.history[today()]||{xp:0,m:0};S.history[today()].xp=(S.history[today()].xp||0)+15}
+   save();render();
+ };
+}
+
+/* ---------- timed mock exam ---------- */
+let EX=null, EXT=null;
+function startMock(){
+  const plan=[["arch",5],["work",3],["net",4],["stor",2],["trbl",6]];
+  let list=[];
+  plan.forEach(([dom,n])=>{
+    const pool=(DATA.questions[dom]||[]).slice();
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+    pool.slice(0,n).forEach(q=>list.push({...q,dom}));
+  });
+  for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]]}
+  EX={list,i:0,ans:new Array(list.length).fill(-1),left:7200,start:Date.now(),done:false};
+  if(EXT)clearInterval(EXT);
+  EXT=setInterval(()=>{
+    if(!EX)return;
+    EX.left--;
+    const el=document.getElementById("clock");
+    if(el)el.textContent=fmtTime(EX.left);
+    if(EX.left<=0){clearInterval(EXT);submitMock()}
+  },1000);
+  go("mock");
+}
+function fmtTime(s){const m=Math.floor(s/60),ss=s%60;return `${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`}
+function mockScreen(a){
+  if(!EX)return go("home");
+  const q=EX.list[EX.i];
+  const answered=EX.ans.filter(x=>x>=0).length;
+  a.innerHTML=`<div class="top"><button class="back" onclick="if(confirm('Abandon the mock exam?')){clearInterval(EXT);EX=null;go('home')}">‹</button>
+   <h2>Mock exam</h2><span class="pill" id="clock">${fmtTime(EX.left)}</span></div>
+  <div class="between" style="margin-bottom:8px"><span class="pill">Question ${EX.i+1} / ${EX.list.length}</span>
+  <span class="tiny muted">${answered} answered</span></div>
+  <div class="bar" style="margin-bottom:14px"><i style="width:${Math.round(100*answered/EX.list.length)}%"></i></div>
+  <div class="cardq"><div class="tiny muted">${esc(domainById(q.dom).n)}</div>
+  <div style="font-size:18px;font-weight:750;margin-top:8px;line-height:1.4">${esc(q.q)}</div></div>
+  <div id="o">${q.o.map((x,i)=>`<button class="choice ${EX.ans[EX.i]===i?"ok":""}" data-i="${i}"><span class="k">${"ABCD"[i]}</span>${esc(x)}</button>`).join("")}</div>
+  <div class="spacer"></div>
+  <div class="grid2"><button class="btn alt" id="prev" ${EX.i===0?"disabled":""}>◀︎ Previous</button>
+  <button class="btn alt" id="next" ${EX.i===EX.list.length-1?"disabled":""}>Next ▶︎</button></div>
+  <div style="height:10px"></div>
+  <button class="btn" id="sub">Submit — ${answered}/${EX.list.length} answered</button>`;
+  a.querySelectorAll("#o .choice").forEach(b=>b.onclick=()=>{EX.ans[EX.i]=+b.dataset.i;render()});
+  $("#prev").onclick=()=>{if(EX.i>0){EX.i--;render()}};
+  $("#next").onclick=()=>{if(EX.i<EX.list.length-1){EX.i++;render()}};
+  $("#sub").onclick=()=>{if(confirm("Submit the exam? You cannot change answers after."))submitMock()};
+}
+function submitMock(){
+  if(!EX||EX.done)return;
+  EX.done=true;clearInterval(EXT);
+  const ok=EX.list.filter((q,i)=>EX.ans[i]===q.a).length;
+  const n=EX.list.length, score=Math.round(100*ok/n);
+  const per={};
+  EX.list.forEach((q,i)=>{per[q.dom]=per[q.dom]||{ok:0,n:0};per[q.dom].n++;if(EX.ans[i]===q.a)per[q.dom].ok++});
+  EX.result={ok,n,score,per,used:7200-EX.left};
+  S.history[today()]=S.history[today()]||{xp:0,m:0};
+  S.history[today()].m=(S.history[today()].m||0)+Math.round((7200-EX.left)/60);
+  S.minutes+=Math.round((7200-EX.left)/60);save();
+  go("mockresult");
+}
+function mockResult(a){
+  if(!EX||!EX.result)return go("home");
+  const r=EX.result, pass=r.score>=66;
+  a.innerHTML=`<div style="text-align:center;margin-top:4vh"><div style="font-size:60px">${pass?"🏅":"📉"}</div>
+  <h1 style="margin-top:8px">${r.score}%</h1>
+  <p class="muted" style="margin-top:4px">${r.ok} / ${r.n} · threshold 66% · ${pass?"PASS":"FAIL"}</p>
+  <p class="tiny muted">time used ${fmtTime(r.used)} of 2:00:00</p></div>
+  <div class="spacer"></div>
+  <div class="stack">${Object.entries(r.per).map(([d,v])=>{const p=Math.round(100*v.ok/v.n);
+    return `<div class="card"><div class="between"><b>${esc(domainById(d).n)}</b><span class="tiny muted">${v.ok}/${v.n} · ${p}%</span></div>
+    <div class="bar" style="margin-top:8px"><i style="width:${p}%"></i></div></div>`}).join("")}</div>
+  <div class="spacer"></div>
+  <button class="btn alt" id="rev">🔍 Review the ${r.n-r.ok} mistakes</button>
+  <div style="height:10px"></div>
+  <button class="btn" onclick="clearInterval(EXT);EX=null;go('home')">Done</button>`;
+  $("#rev").onclick=()=>{
+    const wrong=EX.list.map((q,i)=>({q,i})).filter(({q,i})=>EX.ans[i]!==q.a);
+    a.innerHTML=`<div class="top"><button class="back" onclick="go('mockresult')">‹</button><h2>Mistakes</h2><span style="width:40px"></span></div>
+    <div class="stack">${wrong.map(({q,i})=>`<div class="card"><div class="tiny muted">${esc(domainById(q.dom).n)}</div>
+      <p style="margin-top:6px;font-weight:700">${esc(q.q)}</p>
+      <p class="small" style="margin-top:8px;color:#ff9a9a">Your answer: ${EX.ans[i]>=0?esc(q.o[EX.ans[i]]):"—"}</p>
+      <p class="small" style="margin-top:4px;color:#b6ff87">Correct: ${esc(q.o[q.a])}</p>
+      <p class="tiny muted" style="margin-top:8px">${esc(q.w)}</p></div>`).join("")||"<p class='muted'>No mistakes.</p>"}</div>`;
+  };
+}
+
+/* ---------- cheat sheets ---------- */
+function cheatScreen(a){
+ const d=DATA.cheatsheets.find(x=>x.id===S._dom)||DATA.cheatsheets[0];
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Cheat sheet</h2><span style="width:40px"></span></div>
+ <div class="tabs">${DATA.cheatsheets.map(c=>`<button class="tab ${c.id===d.id?"on":""}" data-c="${c.id}">${c.t.split(" ")[0]}</button>`).join("")}</div>
+ <h3>${esc(d.t)}</h3><div class="spacer"></div>
+ <div class="stack">${d.items.map(it=>`<div class="card"><b>${esc(it.t)}</b><pre>${esc(it.c)}</pre></div>`).join("")}</div>`;
+ a.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{S._dom=b.dataset.c;render()});
+}
+
+function docsScreen(a){
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Documentation</h2><span style="width:40px"></span></div>
+ <p class="small muted" style="margin-bottom:12px">${DATA.docs.length} memo pages, updated with the app.</p>
+ <div class="stack" id="dl"></div>`;
+ DATA.docs.forEach((doc,i)=>{
+   const b=el(`<button class="lvl"><div class="ico" style="background:rgba(120,60,255,.18)">📖</div>
+     <div class="meta"><b>${esc(doc.t)}</b><div class="tiny muted">${doc.body.length} sections</div></div>
+     <div class="muted">›</div></button>`);
+   b.onclick=()=>{S._doc=i;go("doc")};
+   $("#dl").appendChild(b);
+ });
+}
+function certHTML(){
+ const total=DATA.domains.reduce((s,d)=>s+d.lessons.reduce((t,l)=>t+l.steps.length,0),0);
+ const seen=Object.keys(S.seen).length;
+ const pct=Math.round(100*seen/total);
+ const acc=Math.round(100*S.good/((S.good+S.bad)||1));
+ const ok=seen>=total;
+ const name=esc((S.profile&&S.profile.name)||"—");
+ const date=new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+ return `<div class="card" id="cert" style="background:#0b1020;border:2px solid #2a6df4;padding:22px;text-align:center">
+  <div style="font-size:11px;letter-spacing:2px;color:#8fd4ff;text-transform:uppercase">Attestation de formation</div>
+  <h2 style="margin:10px 0 4px;font-size:22px">Formation Kubernetes</h2>
+  <div class="tiny muted">du conteneur au cluster · 8 modules</div>
+  <div style="margin:18px 0 6px;font-size:13px;color:#9aa4b2">décernée à</div>
+  <div style="font-size:26px;font-weight:700">${name}</div>
+  <div class="spacer"></div>
+  <div class="row" style="justify-content:space-around;gap:8px">
+    <div><b>${pct}%</b><div class="tiny muted">leçons lues</div></div>
+    <div><b>${acc}%</b><div class="tiny muted">précision QCM</div></div>
+    <div><b>${Math.floor(S.minutes/60)}h${String(Math.round(S.minutes%60)).padStart(2,"0")}</b><div class="tiny muted">temps</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="tiny" style="color:#9aa4b2">${date}</div>
+  <div class="tiny" style="color:#6b7686;margin-top:10px">${ok?"Parcours complet validé":"Parcours en cours — attestation partielle"}</div>
+ </div>
+ <div class="spacer"></div>
+ <button class="btn" onclick="window.print()">Imprimer / PDF</button>
+ <div class="spacer"></div>`;
+}
+function docScreen(a){
+ const doc=DATA.docs[S._doc||0];
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('docs')">‹</button><h2>Docs</h2><span style="width:40px"></span></div>
+ <h2 style="margin-bottom:6px">${esc(doc.t)}</h2>
+ <div class="spacer"></div>
+ ${doc.id==="doc_cert"?certHTML():""}
+ <div class="stack">${doc.body.map(s=>`<div class="card"><h3 style="color:#b79bff">${esc(s.h)}</h3>
+   <p style="margin-top:8px;font-size:15px;line-height:1.6">${esc(s.p)}</p></div>`).join("")}</div>`;
+}
+function tipsScreen(a){
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Exam tips</h2><span style="width:40px"></span></div>
+ <div class="stack">${DATA.tips.map(t=>`<div class="card"><b>${esc(t.t)}</b><p class="small muted" style="margin-top:6px">${esc(t.p)}</p></div>`).join("")}</div>`;
+}
+
+function statsScreen(a){
+ const acc=Math.round(100*S.good/((S.good+S.bad)||1));
+ const steps=Object.keys(S.seen).length;
+ const total=DATA.domains.reduce((s,d)=>s+d.lessons.reduce((t,l)=>t+l.steps.length,0),0);
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Stats</h2><span style="width:40px"></span></div>
+ <div class="grid2">
+  <div class="stat"><b>${Math.floor(S.minutes/60)}h${String(Math.round(S.minutes%60)).padStart(2,"0")}</b><i>time</i></div>
+  <div class="stat"><b>${S.streak}</b><i>streak</i></div>
+  <div class="stat"><b>${S.best||0}</b><i>record</i></div>
+  <div class="stat"><b>${acc}%</b><i>accuracy</i></div>
+  <div class="stat"><b>${steps}/${total}</b><i>steps read</i></div>
+  <div class="stat"><b>${Object.keys(DATA.questions).reduce((s,k)=>s+DATA.questions[k].length,0)}</b><i>questions</i></div>
+ </div>
+ <div class="spacer"></div><h3>By domain</h3><div class="spacer"></div>
+ <div class="stack">${DATA.domains.map(d=>`<div class="card"><div class="between"><b>${d.e} ${esc(d.n)}</b><span class="tiny muted">${domainPct(d.id)}%</span></div>
+ <div class="bar" style="margin-top:8px"><i style="width:${domainPct(d.id)}%"></i></div></div>`).join("")}</div>`;
+}
+
+function profileScreen(a){
+ const p=S.profile;
+ a.innerHTML=`<div class="top"><button class="back" onclick="go('home')">‹</button><h2>Profile</h2><span style="width:40px"></span></div>
+ <div class="card" style="text-align:center"><div style="font-size:56px">${p.avatar}</div>
+ <h2 style="margin-top:6px">${esc(p.name)}</h2>
+ <p class="small muted">Since ${new Date(p.since).toLocaleDateString("en-GB")}</p>
+ <div class="spacer"></div><button class="btn alt" id="ren">✏️ Change name</button>
+ <div class="spacer"></div>
+ <div class="grid3"><div class="stat"><b>${S.xp}</b><i>xp</i></div><div class="stat"><b>${S.streak}</b><i>streak</i></div>
+ <div class="stat"><b>${Object.keys(S.seen).length}</b><i>steps</i></div></div></div>
+ <div class="spacer"></div>
+ <div class="card"><h3>Sync</h3>
+   <p class="tiny muted" style="margin-top:4px">Same progress on iPhone and PC, through a private GitHub Gist.</p>
+   <div class="spacer"></div>
+   <input id="tk" type="password" placeholder="GitHub token (gist scope)" value="${localStorage.getItem(TOKKEY)?"••••••••••":""}">
+   <div style="height:10px"></div><button class="btn blue" id="sy">🔄 Sync now</button>
+   <p class="tiny muted" style="margin-top:10px">${S.synced?"Last sync: "+new Date(S.synced).toLocaleString("en-GB"):"Never synced"}</p></div>
+ <div class="spacer"></div>
+ <div class="card"><h3>Settings</h3><div class="spacer"></div>
+   <button class="btn alt" id="exp">⬇️ Export</button><div style="height:10px"></div>
+   <button class="btn alt" id="rst" style="color:#ff9a9a">♻️ Reset</button></div>
+ <p class="tiny muted" style="text-align:center;margin-top:16px">${VERSION} · data stays on your phone</p>`;
+ $("#ren").onclick=()=>{const v=prompt("Your name",p.name);if(v&&v.trim()){p.name=v.trim().slice(0,18);save();render()}};
+ $("#sy").onclick=()=>{const v=$("#tk").value.trim();if(v&&v.indexOf("•")!==0)localStorage.setItem(TOKKEY,v);syncNow()};
+ $("#exp").onclick=()=>{const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+   const u=URL.createObjectURL(b),i=document.createElement("a");i.href=u;i.download="cka-progress.json";i.click();URL.revokeObjectURL(u)};
+ $("#rst").onclick=()=>{if(confirm("Erase all progress?")){localStorage.removeItem(KEY);S=blank();location.reload()}};
+}
+async function syncNow(){
+ const t=localStorage.getItem(TOKKEY); if(!t)return toast("Add a GitHub token");
+ const base="https://api.github.com";
+ const h={Authorization:"***"+t,Accept:"application/vnd.github+json","Content-Type":"application/json"};
+ try{
+  if(S.gistId){const r=await fetch(base+"/gists/"+S.gistId,{headers:h});
+    if(r.ok){const g=await r.json();const f=g.files&&g.files["cka-progress.json"];
+      if(f&&f.content){try{const remote=JSON.parse(f.content);
+        S.xp=Math.max(S.xp,remote.xp||0);S.good=Math.max(S.good,remote.good||0);S.bad=Math.max(S.bad,remote.bad||0);
+        S.seen=Object.assign({},remote.seen||{},S.seen);
+        S.history=Object.assign({},remote.history||{},S.history);
+      }catch(e){}}}}
+  const payload=JSON.stringify({description:"Formation K8s progress (private)",public:false,
+    files:{"cka-progress.json":{content:JSON.stringify(S)}}});
+  const r2=S.gistId?await fetch(base+"/gists/"+S.gistId,{method:"PATCH",headers:h,body:payload})
+                    :await fetch(base+"/gists",{method:"POST",headers:h,body:payload});
+  if(!r2.ok)throw new Error("HTTP "+r2.status);
+  const g2=await r2.json();S.gistId=g2.id;S.synced=Date.now();save();toast("Synced ✓");render();
+ }catch(e){toast("Failed: "+e.message)}
+}
+
+setInterval(()=>{if(!S.profile)return;const t=today();
+ S.history[t]=S.history[t]||{xp:0,m:0};S.history[t].m=(S.history[t].m||0)+1/6;S.minutes+=1/6;save()},10000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{});
+render();
+</script>
+</body>
+</html>
